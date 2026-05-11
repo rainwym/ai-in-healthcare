@@ -3,8 +3,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, classification_report, ConfusionMatrixDisplay
 
 DATA_PATH = "data/healthcare-dataset-stroke-data.csv"
 TARGET = "stroke"
@@ -43,7 +46,6 @@ def save_glucose_distribution(df):
     plt.savefig("outputs/glucose_distribution.png")
     plt.close()
 
-
 def save_smoking_status_countplot(df):
     plt.figure(figsize=(8, 5))
     sns.countplot(data=df, x="smoking_status")
@@ -55,7 +57,6 @@ def save_smoking_status_countplot(df):
     plt.savefig("outputs/smoking_status_counts.png")
     plt.close()
 
-
 def save_age_vs_stroke_boxplot(df): # Age vs Stroke 
     plt.figure(figsize=(7, 5))
     sns.boxplot(data=df, x=TARGET, y="age")
@@ -65,7 +66,6 @@ def save_age_vs_stroke_boxplot(df): # Age vs Stroke
     plt.tight_layout()
     plt.savefig("outputs/age_vs_stroke_boxplot.png")
     plt.close()
-
 
 def save_smoking_vs_stroke_heatmap(df):
     table = pd.crosstab(df["smoking_status"], df[TARGET])
@@ -78,7 +78,6 @@ def save_smoking_vs_stroke_heatmap(df):
     plt.tight_layout()
     plt.savefig("outputs/smoking_vs_stroke_heatmap.png")
     plt.close()
-
 
 def save_pca_plot(df):
     X_data = df.drop(columns=[TARGET])
@@ -102,9 +101,86 @@ def save_pca_plot(df):
     plt.savefig("outputs/pca_stroke_plot.png")
     plt.close()
 
+
+# Model Preparation
+
+
+def create_features(df):
+    df = df.copy()
+
+    df["age_group"] = pd.cut(
+        df["age"],
+        bins=[0, 18, 40, 60, 120],
+        labels=["child", "young_adult", "middle_age", "older_adult"]
+    )
+
+    df["log_avg_glucose_level"] = np.log1p(df["avg_glucose_level"])
+
+    df["age_glucose_interaction"] = df["age"] * df["avg_glucose_level"]
+
+    return df
+
+def prepare_model_data(df):
+    X = df.drop(columns=[TARGET])
+    y = df[TARGET]
+
+    X = pd.get_dummies(X, drop_first=True)
+
+    return X, y
+
+def train_model(X, y):
+    numerical_columns = [
+        "age",
+        "avg_glucose_level",
+        "bmi",
+        "log_avg_glucose_level",
+        "age_glucose_interaction"
+    ]
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y,
+        test_size=0.2,
+        random_state=42,
+        stratify=y
+    )
+
+    scaler = StandardScaler()
+
+    X_train[numerical_columns] = scaler.fit_transform(X_train[numerical_columns])
+    X_test[numerical_columns] = scaler.transform(X_test[numerical_columns])
+
+    model = LogisticRegression(max_iter=1000)
+    model.fit(X_train, y_train)
+
+    predictions = model.predict(X_test)
+
+    return model, X_test, y_test, predictions
+
+def evaluate_model(y_test, predictions):
+    accuracy = accuracy_score(y_test, predictions)
+
+    print(f"Accuracy: {accuracy:.3f}")
+    print()
+    print("Classification Report:")
+    print(classification_report(y_test, predictions))
+
+def save_confusion_matrix(y_test, predictions):
+    ConfusionMatrixDisplay.from_predictions(
+        y_test,
+        predictions,
+        normalize="true"
+    )
+
+    plt.title("Confusion Matrix for Stroke Prediction")
+    plt.tight_layout()
+    plt.savefig("outputs/confusion_matrix.png")
+    plt.close()
+
 def main():
     df = load_data(DATA_PATH)
     df = clean_data(df)
+    df = create_features(df)
 
     save_correlation_heatmap(df)
     save_glucose_distribution(df)
@@ -112,6 +188,12 @@ def main():
     save_age_vs_stroke_boxplot(df)
     save_smoking_vs_stroke_heatmap(df)
     save_pca_plot(df)
+
+    # Prep model
+    X, y = prepare_model_data(df)
+    model, X_test, y_test, predictions = train_model(X, y)
+    evaluate_model(y_test, predictions)
+    save_confusion_matrix(y_test, predictions)
     
     print("Success")
 
