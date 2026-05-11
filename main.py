@@ -56,7 +56,7 @@ def save_smoking_status_countplot(df):
     plt.close()
 
 
-def save_age_vs_stroke_boxplot(df):
+def save_age_vs_stroke_boxplot(df): # Age vs Stroke 
     plt.figure(figsize=(7, 5))
     sns.boxplot(data=df, x=TARGET, y="age")
     plt.title("Age Compared to Stroke")
