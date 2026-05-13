@@ -110,7 +110,6 @@ def save_pca_plot(df):
 
 # Model Preparation
 
-
 def create_features(df):
     df = df.copy()
 

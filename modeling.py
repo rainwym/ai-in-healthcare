@@ -14,13 +14,13 @@ from sklearn.svm import SVC
 
 TARGET = "stroke"
 
-def split_features_and_target(df):
+def split_features_and_target(df): # Separate dataset into X(no target) and y(target/prediction)
     X = df.drop(columns=[TARGET])
     y = df[TARGET]
 
     return X, y
 
-def build_preprocessor(X):
+def build_preprocessor(X): # Preprocessing dataset that can handle both num/cat inputs
     numeric_columns = X.select_dtypes(include="number").columns
     categorical_columns = X.select_dtypes(exclude="number").columns
 
@@ -32,7 +32,7 @@ def build_preprocessor(X):
     )
     return preprocessor
 
-def evaluate_with_cross_validation(model, X, y):
+def evaluate_with_cross_validation(model, X, y): # Model tests on different dataset splits
     scores = cross_val_score(
         model,
         X,
@@ -47,7 +47,7 @@ def evaluate_with_cross_validation(model, X, y):
     print(f"Standard deviation: {np.std(scores):.3f}")
     print()
 
-def compare_regularization(preprocessor, X, y):
+def compare_regularization(preprocessor, X, y): # Regularization
     print("L2 Logistic Regression:")
     l2_model = Pipeline(
         steps=[
@@ -63,7 +63,7 @@ def compare_regularization(preprocessor, X, y):
     )
     evaluate_with_cross_validation(l2_model, X, y)
 
-def compare_classification_models(preprocessor, X, y):
+def compare_classification_models(preprocessor, X, y): # Compares LR, Random Forest, & SVC models
     models = {
         "Logistic Regression": LogisticRegression(max_iter=1000, class_weight="balanced"),
         "Random Forest": RandomForestClassifier(random_state=42, class_weight="balanced"),
@@ -81,7 +81,7 @@ def compare_classification_models(preprocessor, X, y):
         )
         evaluate_with_cross_validation(pipeline, X, y)
 
-def train_final_model(preprocessor, X, y):
+def train_final_model(preprocessor, X, y): # Final model
     X_train, X_test, y_train, y_test = train_test_split(
         X,
         y,
@@ -121,7 +121,7 @@ def train_final_model(preprocessor, X, y):
     plt.close()
     return model, X_train, X_test, y_train, y_test
 
-def save_calibration_plot(preprocessor, X_train, X_test, y_train, y_test):
+def save_calibration_plot(preprocessor, X_train, X_test, y_train, y_test): # Save model output
     base_model = Pipeline(
         steps=[
             ("preprocessor", preprocessor),
