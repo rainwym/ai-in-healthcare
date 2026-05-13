@@ -3,11 +3,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from sklearn.model_selection import train_test_split
+from modeling import (
+    split_features_and_target,
+    build_preprocessor,
+    compare_regularization,
+    compare_classification_models,
+    train_final_model,
+    save_calibration_plot
+)
+
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, classification_report, ConfusionMatrixDisplay
 
 DATA_PATH = "data/healthcare-dataset-stroke-data.csv"
 TARGET = "stroke"
@@ -120,63 +126,6 @@ def create_features(df):
 
     return df
 
-def prepare_model_data(df):
-    X = df.drop(columns=[TARGET])
-    y = df[TARGET]
-
-    X = pd.get_dummies(X, drop_first=True)
-
-    return X, y
-
-def train_model(X, y):
-    numerical_columns = [
-        "age",
-        "avg_glucose_level",
-        "bmi",
-        "log_avg_glucose_level",
-        "age_glucose_interaction"
-    ]
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X,
-        y,
-        test_size=0.2,
-        random_state=42,
-        stratify=y
-    )
-
-    scaler = StandardScaler()
-
-    X_train[numerical_columns] = scaler.fit_transform(X_train[numerical_columns])
-    X_test[numerical_columns] = scaler.transform(X_test[numerical_columns])
-
-    model = LogisticRegression(max_iter=1000)
-    model.fit(X_train, y_train)
-
-    predictions = model.predict(X_test)
-
-    return model, X_test, y_test, predictions
-
-def evaluate_model(y_test, predictions):
-    accuracy = accuracy_score(y_test, predictions)
-
-    print(f"Accuracy: {accuracy:.3f}")
-    print()
-    print("Classification Report:")
-    print(classification_report(y_test, predictions))
-
-def save_confusion_matrix(y_test, predictions):
-    ConfusionMatrixDisplay.from_predictions(
-        y_test,
-        predictions,
-        normalize="true"
-    )
-
-    plt.title("Confusion Matrix for Stroke Prediction")
-    plt.tight_layout()
-    plt.savefig("outputs/confusion_matrix.png")
-    plt.close()
-
 def main():
     df = load_data(DATA_PATH)
     df = clean_data(df)
@@ -189,11 +138,19 @@ def main():
     save_smoking_vs_stroke_heatmap(df)
     save_pca_plot(df)
 
-    # Prep model
-    X, y = prepare_model_data(df)
-    model, X_test, y_test, predictions = train_model(X, y)
-    evaluate_model(y_test, predictions)
-    save_confusion_matrix(y_test, predictions)
+    X, y = split_features_and_target(df)
+    preprocessor = build_preprocessor(X)
+    print("Regularization comparison:")
+    compare_regularization(preprocessor, X, y)
+    print("Model comparison:")
+    compare_classification_models(preprocessor, X, y)
+
+    final_model, X_train, X_test, y_train, y_test, = train_final_model(
+        preprocessor,
+        X,
+        y
+    )
+    save_calibration_plot(preprocessor, X_train, X_test, y_train, y_test)
     
     print("Success")
 
