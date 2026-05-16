@@ -9,20 +9,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 
 
-def calculate_coverage_score(y_true, prediction_sets):
-    """
-    Calculates how often the real answer is inside the prediction set.
-
-    Example:
-    True class = 1
-    Prediction set = [0, 1]
-    This counts as correct coverage because 1 is included.
-
-    True class = 1
-    Prediction set = [0]
-    This does not count because 1 is missing.
-    """
-
+def calculate_coverage_score(y_true, prediction_sets): # Calculates frequency of real answer inside prediction set
     covered = []
 
     for true_class, prediction_set in zip(y_true, prediction_sets):
@@ -31,25 +18,7 @@ def calculate_coverage_score(y_true, prediction_sets):
     return np.mean(covered)
 
 
-def create_prediction_sets(probabilities, threshold):
-    """
-    Creates prediction sets using class probabilities.
-
-    For each row, the model gives probabilities like:
-
-    no stroke probability = 0.75
-    stroke probability = 0.25
-
-    If a probability is above the conformal threshold,
-    that class is included in the prediction set.
-
-    Possible prediction sets:
-    [0] means likely no stroke
-    [1] means likely stroke
-    [0, 1] means uncertain
-    [] means no class passed the threshold
-    """
-
+def create_prediction_sets(probabilities, threshold): # Prediction sets using class probabilities
     prediction_sets = []
 
     for row in probabilities:
@@ -64,14 +33,7 @@ def create_prediction_sets(probabilities, threshold):
     return prediction_sets
 
 
-def save_data_partitions(X_train, X_cal, X_test, y_train, y_cal, y_test):
-    """
-    Saves the train, calibration, and test datasets.
-
-    This is useful because it records exactly what data was used
-    for each part of the conformal prediction process.
-    """
-
+def save_data_partitions(X_train, X_cal, X_test, y_train, y_cal, y_test): # Saves train/cal/test datasets
     X_train.to_csv("outputs/X_train.csv", index=False)
     X_cal.to_csv("outputs/X_cal.csv", index=False)
     X_test.to_csv("outputs/X_test.csv", index=False)
@@ -81,16 +43,7 @@ def save_data_partitions(X_train, X_cal, X_test, y_train, y_cal, y_test):
     y_test.to_csv("outputs/y_test.csv", index=False)
 
 
-def save_conformal_confidence_plots(probabilities, set_sizes):
-    """
-    Saves visualizations showing the relationship between model confidence
-    and conformal prediction set size.
-
-    Usually:
-    smaller set size = model is more confident
-    larger set size = model is less confident
-    """
-
+def save_conformal_confidence_plots(probabilities, set_sizes): # Saves plots that shows relationship btwn model confidence/conformal prediction set size
     confidence = probabilities.max(axis=1)
 
     confidence_df = pd.DataFrame(
@@ -119,25 +72,7 @@ def save_conformal_confidence_plots(probabilities, set_sizes):
     plt.close()
 
 
-def run_conformal_prediction(preprocessor, X, y):
-    """
-    Runs manual conformal prediction for the stroke classification model.
-
-    Normal classification gives one prediction:
-
-    0 = no stroke
-    1 = stroke
-
-    Conformal prediction gives a prediction set:
-
-    [0]
-    [1]
-    [0, 1]
-    []
-
-    This lets the model communicate uncertainty.
-    """
-
+def run_conformal_prediction(preprocessor, X, y): # Manual conformal prediction for stroke classification model
     confidence_level = 0.90
     alpha = 1 - confidence_level
 
