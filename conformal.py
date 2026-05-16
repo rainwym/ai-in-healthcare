@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import joblib
 
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
@@ -10,16 +11,16 @@ from sklearn.pipeline import Pipeline
 
 def calculate_coverage_score(y_true, prediction_sets):
     """
-    Calculates how often the true class is inside the conformal prediction set.
+    Calculates how often the real answer is inside the prediction set.
 
     Example:
-    true class = 1
-    prediction set = [0, 1]
-    This counts as covered because 1 is inside the set.
+    True class = 1
+    Prediction set = [0, 1]
+    This counts as correct coverage because 1 is included.
 
-    true class = 1
-    prediction set = [0]
-    This does not count as covered.
+    True class = 1
+    Prediction set = [0]
+    This does not count because 1 is missing.
     """
 
     covered = []
@@ -32,14 +33,21 @@ def calculate_coverage_score(y_true, prediction_sets):
 
 def create_prediction_sets(probabilities, threshold):
     """
-    Creates conformal prediction sets from predicted probabilities.
+    Creates prediction sets using class probabilities.
 
-    The model gives probabilities like:
-    class 0 probability = 0.80
-    class 1 probability = 0.20
+    For each row, the model gives probabilities like:
 
-    We include a class in the prediction set if its probability
-    is high enough based on the conformal threshold.
+    no stroke probability = 0.75
+    stroke probability = 0.25
+
+    If a probability is above the conformal threshold,
+    that class is included in the prediction set.
+
+    Possible prediction sets:
+    [0] means likely no stroke
+    [1] means likely stroke
+    [0, 1] means uncertain
+    [] means no class passed the threshold
     """
 
     prediction_sets = []
@@ -56,22 +64,78 @@ def create_prediction_sets(probabilities, threshold):
     return prediction_sets
 
 
+def save_data_partitions(X_train, X_cal, X_test, y_train, y_cal, y_test):
+    """
+    Saves the train, calibration, and test datasets.
+
+    This is useful because it records exactly what data was used
+    for each part of the conformal prediction process.
+    """
+
+    X_train.to_csv("outputs/X_train.csv", index=False)
+    X_cal.to_csv("outputs/X_cal.csv", index=False)
+    X_test.to_csv("outputs/X_test.csv", index=False)
+
+    y_train.to_csv("outputs/y_train.csv", index=False)
+    y_cal.to_csv("outputs/y_cal.csv", index=False)
+    y_test.to_csv("outputs/y_test.csv", index=False)
+
+
+def save_conformal_confidence_plots(probabilities, set_sizes):
+    """
+    Saves visualizations showing the relationship between model confidence
+    and conformal prediction set size.
+
+    Usually:
+    smaller set size = model is more confident
+    larger set size = model is less confident
+    """
+
+    confidence = probabilities.max(axis=1)
+
+    confidence_df = pd.DataFrame(
+        {
+            "confidence": confidence,
+            "set_size": set_sizes
+        }
+    )
+
+    plt.figure(figsize=(7, 5))
+    sns.boxplot(data=confidence_df, x="set_size", y="confidence")
+    plt.title("Model Confidence by Prediction Set Size")
+    plt.xlabel("Prediction Set Size")
+    plt.ylabel("Model Confidence")
+    plt.tight_layout()
+    plt.savefig("outputs/conformal_confidence_boxplot.png")
+    plt.close()
+
+    plt.figure(figsize=(7, 5))
+    sns.violinplot(data=confidence_df, x="set_size", y="confidence")
+    plt.title("Confidence Distribution by Prediction Set Size")
+    plt.xlabel("Prediction Set Size")
+    plt.ylabel("Model Confidence")
+    plt.tight_layout()
+    plt.savefig("outputs/conformal_confidence_violinplot.png")
+    plt.close()
+
+
 def run_conformal_prediction(preprocessor, X, y):
     """
     Runs manual conformal prediction for the stroke classification model.
 
-    Normal classification gives one answer:
+    Normal classification gives one prediction:
+
     0 = no stroke
     1 = stroke
 
-    Conformal prediction gives a set of possible answers:
+    Conformal prediction gives a prediction set:
+
     [0]
     [1]
     [0, 1]
+    []
 
-    [0] means the model is confident in no stroke.
-    [1] means the model is confident in stroke.
-    [0, 1] means the model is unsure, so it includes both.
+    This lets the model communicate uncertainty.
     """
 
     confidence_level = 0.90
@@ -117,11 +181,7 @@ def run_conformal_prediction(preprocessor, X, y):
         nonconformity_score = 1 - probability_of_true_class
         calibration_scores.append(nonconformity_score)
 
-    conformal_score = np.quantile(
-        calibration_scores,
-        1 - alpha
-    )
-
+    conformal_score = np.quantile(calibration_scores, 1 - alpha)
     probability_threshold = 1 - conformal_score
 
     test_probabilities = model.predict_proba(X_test)
@@ -139,34 +199,9 @@ def run_conformal_prediction(preprocessor, X, y):
     print(pd.Series(set_sizes).value_counts().sort_index())
     print()
 
-    save_conformal_confidence_plot(test_probabilities, set_sizes)
+    save_conformal_confidence_plots(test_probabilities, set_sizes)
+    save_data_partitions(X_train, X_cal, X_test, y_train, y_cal, y_test)
+
+    joblib.dump(model, "outputs/stroke_conformal_model.pkl")
 
     return prediction_sets
-
-
-def save_conformal_confidence_plot(probabilities, set_sizes):
-    """
-    Saves a plot comparing model confidence and conformal prediction set size.
-
-    Usually:
-    set size 1 = more confident
-    set size 2 = less confident
-    """
-
-    confidence = probabilities.max(axis=1)
-
-    confidence_df = pd.DataFrame(
-        {
-            "confidence": confidence,
-            "set_size": set_sizes
-        }
-    )
-
-    plt.figure(figsize=(7, 5))
-    sns.boxplot(data=confidence_df, x="set_size", y="confidence")
-    plt.title("Model Confidence by Conformal Prediction Set Size")
-    plt.xlabel("Prediction Set Size")
-    plt.ylabel("Model Confidence")
-    plt.tight_layout()
-    plt.savefig("outputs/conformal_confidence_boxplot.png")
-    plt.close()
