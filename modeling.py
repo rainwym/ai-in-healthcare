@@ -1,3 +1,4 @@
+import joblib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -108,7 +109,7 @@ def train_final_model(preprocessor, X, y): # Final model
 
     print("Final Model Classification Report:")
     print(classification_report(y_test, predictions))
-    import joblib
+
     joblib.dump(model, "outputs/stroke_final_model.pkl")
 
     ConfusionMatrixDisplay.from_predictions(

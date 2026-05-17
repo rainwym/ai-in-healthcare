@@ -15,6 +15,7 @@ from modeling import (
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from conformal import run_conformal_prediction
+from shap_analysis import run_shap_analysis
 
 DATA_PATH = "data/healthcare-dataset-stroke-data.csv"
 TARGET = "stroke"
@@ -151,6 +152,7 @@ def main():
         y
     )
     save_calibration_plot(preprocessor, X_train, X_test, y_train, y_test)
+    run_shap_analysis(final_model, X_test)
 
     run_conformal_prediction(preprocessor, X, y)
     
