@@ -47,7 +47,7 @@ def evaluate_with_cross_validation(model, X, y): # Model tests on different data
     print(f"Standard deviation: {np.std(scores):.3f}")
     print()
 
-def compare_regularization(preprocessor, X, y): # Regularization
+def evaluate_logistic_regression(preprocessor, X, y): # Regularization
     print("L2 Logistic Regression:")
     l2_model = Pipeline(
         steps=[
@@ -108,6 +108,8 @@ def train_final_model(preprocessor, X, y): # Final model
 
     print("Final Model Classification Report:")
     print(classification_report(y_test, predictions))
+    import joblib
+    joblib.dump(model, "outputs/stroke_final_model.pkl")
 
     ConfusionMatrixDisplay.from_predictions(
         y_test,

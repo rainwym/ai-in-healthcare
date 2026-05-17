@@ -6,7 +6,7 @@ import seaborn as sns
 from modeling import (
     split_features_and_target,
     build_preprocessor,
-    compare_regularization,
+    evaluate_logistic_regression,
     compare_classification_models,
     train_final_model,
     save_calibration_plot
@@ -141,7 +141,7 @@ def main():
     X, y = split_features_and_target(df)
     preprocessor = build_preprocessor(X)
     print("Regularization comparison:")
-    compare_regularization(preprocessor, X, y)
+    evaluate_logistic_regression(preprocessor, X, y)
     print("Model comparison:")
     compare_classification_models(preprocessor, X, y)
 
